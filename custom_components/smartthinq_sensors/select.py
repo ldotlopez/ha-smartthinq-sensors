@@ -16,7 +16,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from . import LGEDevice
 from .const import DOMAIN, LGE_DEVICES, LGE_DISCOVERY_NEW
 from .device_helpers import LGEBaseDevice, get_entity_name
-from .wideq import DeviceType, MicroWaveFeatures
+from .wideq import DeviceType, AirConditionerFeatures, MicroWaveFeatures
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -38,6 +38,16 @@ class ThinQSelectEntityDescription(
     available_fn: Callable[[Any], bool] | None = None
     value_fn: Callable[[Any], str] | None = None
 
+
+AC_SELECT: Tuple[ThinQSelectEntityDescription, ...] = (
+    ThinQSelectEntityDescription(
+        key=AirConditionerFeatures.POWER_SAVE_BASIC,
+        name="Power save setting",
+        options_fn=lambda x: ["0", "20", "40", "60", "80", "100"],
+        select_option_fn=lambda x, option: x.device.set_power_save_basic(int(option)),
+        entity_registry_enabled_default=True,
+    ),
+)
 
 MICROWAVE_SELECT: Tuple[ThinQSelectEntityDescription, ...] = (
     ThinQSelectEntityDescription(
@@ -104,6 +114,15 @@ async def async_setup_entry(
             return
 
         lge_select = []
+
+        # add AC devices
+        lge_select.extend(
+            [
+                LGESelect(lge_device, select_desc)
+                for select_desc in AC_SELECT
+                for lge_device in lge_devices.get(DeviceType.AC, [])
+            ]
+        )
 
         # add WM devices
         lge_select.extend(

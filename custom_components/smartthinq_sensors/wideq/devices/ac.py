@@ -61,6 +61,7 @@ STATE_HUMIDITY = ["SensorHumidity", "airState.humidity.current"]
 STATE_MODE_AIRCLEAN = ["AirClean", "airState.wMode.airClean"]
 STATE_MODE_JET = ["Jet", "airState.wMode.jet"]
 STATE_LIGHTING_DISPLAY = ["DisplayControl", "airState.lightingState.displayControl"]
+STATE_POWER_SAVE_BASIC = ["PowerSave", "airState.powerSave.basic"]
 
 FILTER_TYPES = [
     [
@@ -87,6 +88,7 @@ CMD_STATE_DUCT_ZONES = [CTRL_MISC, "Set", [DUCT_ZONE_V1, "airState.ductZone.cont
 CMD_STATE_MODE_AIRCLEAN = [CTRL_BASIC, "Set", STATE_MODE_AIRCLEAN]
 CMD_STATE_MODE_JET = [CTRL_BASIC, "Set", STATE_MODE_JET]
 CMD_STATE_LIGHTING_DISPLAY = [CTRL_BASIC, "Set", STATE_LIGHTING_DISPLAY]
+CMD_POWER_SAVE_BASIC = [CTRL_BASIC, "Set", STATE_POWER_SAVE_BASIC]
 
 # AWHP Section
 STATE_WATER_IN_TEMP = ["WaterInTempCur", "airState.tempState.inWaterCurrent"]
@@ -866,6 +868,36 @@ class AirConditionerDevice(Device):
             self._filter_status_supported = False
             return None
 
+    async def set_power_save_basic(self, value: int):
+        # "airState.powerSave.basic" : {
+        #  "data_type" : "enum",
+        #  "default" : "0",
+        #  "value_mapping" : {
+        #     "0" : "@OFF",
+        #     "1" : "@ON",
+        #     "10" : "@10",
+        #     "100" : "@100",
+        #     "20" : "@20",
+        #     "30" : "@30",
+        #     "40" : "@40",
+        #     "50" : "@50",
+        #     "60" : "@60",
+        #     "70" : "@70",
+        #     "80" : "@80",
+        #     "90" : "@90"
+        #  }
+        # },
+
+        keys = self._get_cmd_keys(CMD_POWER_SAVE_BASIC)
+        # op_value = self.model_info.enum_value(keys[2], value)
+
+        await self.set(
+            keys[0],
+            keys[1],
+            key=keys[2],
+            value=str(value),
+        )
+
     async def set(
         self, ctrl_key, command, *, key=None, value=None, data=None, ctrl_path=None
     ):
@@ -1274,6 +1306,21 @@ class AirConditionerStatus(DeviceStatus):
         key = self._get_state_key(STATE_HOT_WATER_MAX_TEMP)
         return self._str_to_temp(self._data.get(key))
 
+    @property
+    def power_save_basic(self):
+        """Return display lighting status."""
+        key = self._get_state_key(STATE_POWER_SAVE_BASIC)
+        value = int(self._data.get(key))
+
+        # if (value := self.lookup_enum(key, True)) is None:
+        #     _LOGGER.debug(f"Current power save: {value}")
+        #     return None
+
+        _LOGGER.debug(f"Current power save: {value}")
+        return self._update_feature(
+            AirConditionerFeatures.POWER_SAVE_BASIC, value, False
+        )
+
     def _update_features(self):
         _ = [
             self.current_temp,
@@ -1287,4 +1334,5 @@ class AirConditionerStatus(DeviceStatus):
             self.water_out_current_temp,
             self.mode_awhp_silent,
             self.hot_water_current_temp,
+            self.power_save_basic,
         ]
